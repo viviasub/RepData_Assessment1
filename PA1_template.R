@@ -1,0 +1,130 @@
+rm(list=ls())
+dev.off()
+shell("cls")
+
+## -1---------------------------------
+setwd("~/Progetti_R/RepData_Assign")
+unzip(zipfile="activity.zip")
+data <- read.csv("activity.csv")
+## -----------------------------------
+
+## -2---------------------------------
+date<-as.factor(levels(data$date))
+sum_step=NULL
+for (i in 1:length(date)) {
+  tmp<-sum(data$steps[data$date==date[i]],na.rm=TRUE)
+  sum_step<-c(sum_step,tmp)
+  }
+
+hist(sum_step,breaks = 20,main="Total Step per Day",xlab="number of step")
+## -----------------------------------
+
+## -3----------------------------------
+summary(sum_step)
+rm(sum_step,tmp,i)
+## -----------------------------------
+
+## -4---------------------------------
+Interval<-levels(factor(data$interval))
+Step_day<-matrix(ncol=2,nrow=length(Interval))
+Step_day[,1]<-t(as.integer(Interval))
+
+for (i in 1:length(Interval)) {
+  Step_day[i,2]<-mean(data$steps[data$interval==Interval[i]],na.rm=TRUE)}
+
+Step_day<-as.data.frame(Step_day)
+names(Step_day)<-c("interval","step")
+
+plot(Step_day[,1],Step_day[,2],type="l",
+     xlab=" 5' Interval",ylab="Number of Steps",main="Average Step")
+## -----------------------------------
+
+## -5---------------------------------
+Step_day[which.max(Step_day$step),]
+## -----------------------------------
+
+## -6---------------------------------
+sum(is.na(data$steps))
+## -----------------------------------
+
+## -6 bis-----------------------------
+# Replace each missing value with the mean value of its 5-minute interval
+
+fill_value <- function(steps, interval) {
+  filled <- NA
+  if (!is.na(steps))
+    filled <- c(steps)
+  else
+    filled <- (Step_day[Step_day$interval==interval,2])
+  return(filled)
+}
+
+data_2<-data
+for (i in 1:length(data_2$steps)) {
+  data_2$steps[i]<-fill_value(data_2$steps[i],data_2$interval[i])
+  }
+
+rm(fill_value,Step_day,i)
+## -----------------------------------
+
+## -7---------------------------------
+sum_step<-NULL
+for (i in 1:length(date)) {
+  tmp<-sum(data_2$steps[data_2$date==date[i]],na.rm=TRUE)
+  sum_step<-c(sum_step,tmp)
+}
+
+hist(sum_step,breaks = 20,main="Total Step per Day",xlab="number of step")
+
+summary(sum_step)
+
+rm(sum_step,i,tmp,date)
+## -----------------------------------
+
+## -8---------------------------------
+week_day_end <- function(date) {
+  day <- weekdays(date)
+  if (day %in% c("lunedì", "martedì", "mercoledì", "giovedì", "venerdì"))
+    return("weekday")
+  else if (day %in% c("sabato", "domenica"))
+    return("weekend")
+  else
+    stop("invalid date")
+}
+data_2$date <- as.Date(data_2$date)
+for (i in 1:length(data_2$date)) {
+  data_2$day[i]<-week_day_end(data_2$date[i])
+}
+
+rm(week_day_end,i)
+
+## -8 bis-----------------------------
+data_weekend<-subset(data_2,data_2$day=="weekend")
+data_weekday<-subset(data_2,data_2$day=="weekday")
+
+####
+Step_weekend<-as.data.frame(matrix(ncol=3,nrow=length(Interval)))
+names(Step_weekend)<-c("interval","day","step")
+Step_weekend$interval<-as.integer(Interval)
+
+for (i in 1:length(Interval)) {
+  Step_weekend$step[i]<-mean(data_weekend$steps[data_weekend$interval==Interval[i]])
+  Step_weekend$day[i]<-data_weekend$day[i]}
+
+####
+Step_weekday<-as.data.frame(matrix(ncol=3,nrow=length(Interval)))
+names(Step_weekday)<-c("interval","day","step")
+Step_weekday$interval<-as.integer(Interval)
+
+for (i in 1:length(Interval)) {
+  Step_weekday$step[i]<-mean(data_weekday$steps[data_weekday$interval==Interval[i]])
+  Step_weekday$day[i]<-data_weekday$day[i]}
+
+####
+Step_week<-rbind(Step_weekday,Step_weekend)
+
+####
+library(ggplot2)
+ggplot(Step_week, aes(interval, step)) + geom_line() + facet_grid(day ~ .) +
+  xlab("5' interval") + ylab("Number of steps")
+## -----------------------------------
